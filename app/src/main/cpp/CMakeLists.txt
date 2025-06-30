@@ -13,7 +13,8 @@ set_target_properties(opencv_java4 PROPERTIES
 
 # Crear tu biblioteca nativa
 add_library(native-lib SHARED
-        native-lib.cpp)
+        native-lib.cpp
+        hu_utils.cpp)
 
 # Encontrar librerías del sistema
 find_library(log-lib log)

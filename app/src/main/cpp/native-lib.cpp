@@ -3,6 +3,10 @@
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
 #include <android/bitmap.h>
+#include <android/log.h>
+#include "hu_utils.h"
+#include <android/asset_manager.h>
+#include <android/asset_manager_jni.h>
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_example_visio_1p3_MainActivity_stringFromJNI(
@@ -28,35 +32,104 @@ Java_com_example_visio_1p3_MainActivity_stringFromJNI(
     return env->NewStringUTF(resultado.c_str());
 }
 
+
+void matToBitmap(JNIEnv* env, const cv::Mat& mat, jobject bitmap) {
+    AndroidBitmapInfo info;
+    void* pixels = nullptr;
+
+    if (AndroidBitmap_getInfo(env, bitmap, &info) < 0) return;
+    if (AndroidBitmap_lockPixels(env, bitmap, &pixels) < 0) return;
+
+    cv::Mat dst(info.height, info.width, CV_8UC4, pixels);
+
+    if (mat.channels() == 1) {
+        cv::cvtColor(mat, dst, cv::COLOR_GRAY2RGBA);
+    } else if (mat.channels() == 3) {
+        cv::cvtColor(mat, dst, cv::COLOR_RGB2RGBA);
+    } else {
+        mat.copyTo(dst);
+    }
+
+    AndroidBitmap_unlockPixels(env, bitmap);
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_example_visio_1p3_MainActivity_procesarYMostrar(JNIEnv *env, jobject thiz,
+                                                         jobject inputBitmap, jobject outputBitmap) {
+    AndroidBitmapInfo info;
+    void* pixels;
+
+    AndroidBitmap_getInfo(env, inputBitmap, &info);
+    AndroidBitmap_lockPixels(env, inputBitmap, &pixels);
+    cv::Mat src(info.height, info.width, CV_8UC4, pixels);
+
+    cv::Mat gray, bin, filled;
+    cv::cvtColor(src, gray, cv::COLOR_RGBA2GRAY);
+    cv::threshold(gray, bin, 170, 255, cv::THRESH_BINARY);
+    AndroidBitmap_unlockPixels(env, inputBitmap);
+
+    std::vector<std::vector<cv::Point>> contornos;
+    cv::findContours(bin, contornos, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+    filled = cv::Mat::zeros(bin.size(), CV_8UC1);
+    cv::drawContours(filled, contornos, -1, cv::Scalar(255), cv::FILLED);
+
+    matToBitmap(env, filled, outputBitmap);
+}
 extern "C"
 JNIEXPORT jstring JNICALL
-Java_com_example_visio_1p3_MainActivity_detectarFigura(JNIEnv *env, jobject thiz, jobject bitmap) {
-    // TODO: implement detectarFigura()
+Java_com_example_visio_1p3_MainActivity_detectarFigura(JNIEnv *env, jobject thiz, jobject bitmap, jobject assetManager) {
     AndroidBitmapInfo info;
-    void *pixels;
+    void* pixels;
 
     if (AndroidBitmap_getInfo(env, bitmap, &info) < 0)
-        return env->NewStringUTF("Error al obtener info");
+        return env->NewStringUTF("Error obteniendo info de bitmap");
 
     if (AndroidBitmap_lockPixels(env, bitmap, &pixels) < 0)
-        return env->NewStringUTF("Error al bloquear pixeles");
+        return env->NewStringUTF("Error bloqueando píxeles");
 
     cv::Mat img(info.height, info.width, CV_8UC4, pixels);
-    cv::Mat gray, binary;
+    cv::Mat gray, bin, filled;
     cv::cvtColor(img, gray, cv::COLOR_RGBA2GRAY);
-    cv::threshold(gray, binary, 50, 255, cv::THRESH_BINARY);
-
+    cv::threshold(gray, bin, 170, 255, cv::THRESH_BINARY);
     AndroidBitmap_unlockPixels(env, bitmap);
 
     std::vector<std::vector<cv::Point>> contornos;
-    cv::findContours(binary, contornos, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
-
+    cv::findContours(bin, contornos, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
     if (contornos.empty())
-        return env->NewStringUTF("No se detectaron formas");
+        return env->NewStringUTF("No se detectaron figuras");
 
-    cv::Moments m = cv::moments(contornos[0]);
-    double hu[7];
-    cv::HuMoments(m, hu);
+    filled = cv::Mat::zeros(bin.size(), CV_8UC1);
+    cv::drawContours(filled, contornos, -1, cv::Scalar(255), cv::FILLED);
 
-    return env->NewStringUTF("Figura procesada correctamente ✅");
+    // Calcular Momentos de Hu
+    cv::Moments m = cv::moments(filled, true);
+    std::vector<double> hu(7);
+    cv::HuMoments(m, hu.data());
+    for (double& i : hu)
+        i = -1 * copysign(1.0, i) * log10(std::abs(i));
+
+    // Leer CSV desde assets
+    AAssetManager* mgr = AAssetManager_fromJava(env, assetManager);
+    std::vector<HuDescriptor> dataset = cargarCSVDesdeAssets(mgr, "momentos_hu_dataset.csv");
+
+    if (dataset.empty())
+        return env->NewStringUTF("Dataset vacío");
+
+    std::string mejorEtiqueta = "Desconocida";
+    double mejorDistancia = 1e9;
+
+    for (const auto& entry : dataset) {
+        double dist = distanciaEuclidea(hu, entry.hu);
+        if (dist < mejorDistancia) {
+            mejorDistancia = dist;
+            mejorEtiqueta = entry.label;
+        }
+    }
+
+    std::string resultado = "Figura detectada: " + mejorEtiqueta;
+    __android_log_print(ANDROID_LOG_INFO, "NATIVE", "Resultado: %s", resultado.c_str());
+    return env->NewStringUTF(resultado.c_str());
 }
+
+
