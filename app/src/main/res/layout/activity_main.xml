@@ -2,41 +2,84 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#000000"
-    android:orientation="vertical">
+    android:background="#FFFFFF"
+    android:orientation="vertical"
+    android:padding="12dp">
 
+    <!-- Zona de dibujo -->
     <com.example.visio_p3.DrawingView
         android:id="@+id/drawingView"
         android:layout_width="match_parent"
-        android:layout_height="470dp"
-        android:layout_weight="1" />
+        android:layout_height="280dp"
+        android:layout_marginBottom="8dp" />
 
-    <Button
-        android:id="@+id/btnDetect"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Detectar Figura" />
-
+    <!-- Imagen procesada -->
     <ImageView
         android:id="@+id/imgResultado"
         android:layout_width="match_parent"
-        android:layout_height="200dp"
-        android:layout_margin="8dp"
+        android:layout_height="150dp"
+        android:layout_marginBottom="8dp"
         android:background="#333"
         android:scaleType="fitCenter" />
+
+    <!-- Resultado de texto -->
     <TextView
         android:id="@+id/txtResultado"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Resultado aparecerá aquí"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        android:textColor="#000000"
+        android:layout_marginBottom="8dp"
+        android:background="#FFF3E0"
         android:gravity="center"
         android:padding="8dp"
-        android:background="#FFF3E0"
-        android:layout_marginTop="8dp" />
+        android:text="Resultado aparecerá aquí"
+        android:textColor="#000000"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <!-- Spinner de descriptor -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Descriptor:"
+        android:textColor="#FFFFFF"
+        android:paddingBottom="4dp" />
+
+    <Spinner
+        android:id="@+id/spinDescriptor"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="12dp" />
+
+    <!-- Botón Detectar -->
+    <Button
+        android:id="@+id/btnDetect"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Clasificar forma"
+        android:layout_marginBottom="8dp" />
+
+    <!-- Botón Guardar -->
+    <Button
+        android:id="@+id/btnGuardar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Guardar Descriptor"
+        android:layout_marginBottom="8dp" />
+
+    <!-- Botón Evaluar -->
+    <Button
+        android:id="@+id/btnEvaluar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Evaluar Precisión"
+        android:layout_marginBottom="8dp" />
+
+    <!-- Botón Limpiar -->
+    <Button
+        android:id="@+id/btnLimpiar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Limpiar zona de dibujo"
+        android:layout_marginBottom="8dp" />
 
 </LinearLayout>
-
-
